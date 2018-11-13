@@ -1,0 +1,254 @@
+// Copyright (c) 2018 ml5
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
+
+/* ===
+ml5 Example
+KNN Classification on Webcam Images with mobileNet. Built with p5.js
+=== */
+let video;
+// Create a KNN classifier
+const knnClassifier = ml5.KNNClassifier();
+// Create a featureExtractor that can extract the already learned features from MobileNet
+const featureExtractor = ml5.featureExtractor('MobileNet', modelReady);
+
+let papergif, sissorgif, rockgif;
+
+
+
+function setup() {
+  createCanvas(800,340);
+  // Create a video element
+  video = createCapture(VIDEO);
+  video.hide();
+
+  // Append it to the videoContainer DOM element
+  // video.hide();
+  video.parent('videoContainer');
+  papergif = loadImage('paper.jpg');
+  sissorgif = loadImage('sissor.jpg');
+  rockgif = loadImage('rock.jpg');
+  // video.hide();
+  // Create the UI buttons
+  createButtons();
+}
+function draw() {
+  image(video, 0, 0, 400, 340);
+
+  // video.draw(400, 0);
+
+  noStroke();
+  // fill(255, 0, 0);
+  // rect(positionX, 120, 50, 50);
+}
+
+function modelReady(){
+  // select('#status').html('FeatureExtractor(mobileNet model) Loaded')
+}
+
+// Add the current frame from the video to the classifier
+function addExample(label) {
+  // Get the features of the input video
+  const features = featureExtractor.infer(video);
+  // You can also pass in an optional endpoint, defaut to 'conv_preds'
+  // const features = featureExtractor.infer(video, 'conv_preds');
+  // You can list all the endpoints by calling the following function
+  // console.log('All endpoints: ', featureExtractor.mobilenet.endpoints)
+
+  // Add an example with a label to the classifier
+  knnClassifier.addExample(features, label);
+  updateExampleCounts();
+}
+
+// Predict the current frame.
+async function classify() {
+  // Get the total number of classes from knnClassifier
+  const numClasses = knnClassifier.getNumClasses();
+  if (numClasses <= 0) {
+    console.error('There is no examples in any class');
+    return;
+  }
+  // Get the features of the input video
+  const features = featureExtractor.infer(video);
+
+  // Use knnClassifier to classify which class do these features belong to
+  // You can pass in a callback function `gotResults` to knnClassifier.classify function
+  knnClassifier.classify(features, gotResults);
+  // You can also pass in an optional K value, K default to 3
+  // knnClassifier.classify(features, 3, gotResults);
+
+  // You can also use the following async/await function to call knnClassifier.classify
+  // Remember to add `async` before `function predictClass()`
+  const res = await knnClassifier.classify(features);
+  // gotResults(null, res);
+}
+
+// A util function to create UI buttons
+function createButtons() {
+  // When the A button is pressed, add the current frame
+  // from the video with a label of "rock" to the classifier
+  buttonA = select('#addClassRock');
+  buttonA.mousePressed(function() {
+    addExample('Rock');
+  });
+
+  // When the B button is pressed, add the current frame
+  // from the video with a label of "paper" to the classifier
+  buttonB = select('#addClassPaper');
+  buttonB.mousePressed(function() {
+    addExample('Paper');
+  });
+
+  // When the C button is pressed, add the current frame
+  // from the video with a label of "scissor" to the classifier
+  buttonC = select('#addClassScissor');
+  buttonC.mousePressed(function() {
+    addExample('Scissor');
+  });
+
+  // Reset buttons
+  resetBtnA = select('#resetRock');
+  resetBtnA.mousePressed(function() {
+    clearClass('Rock');
+  });
+
+  resetBtnB = select('#resetPaper');
+  resetBtnB.mousePressed(function() {
+    clearClass('Paper');
+  });
+
+  resetBtnC = select('#resetScissor');
+  resetBtnC.mousePressed(function() {
+    clearClass('Scissor');
+  });
+
+  // Predict button
+  buttonPredict = select('#buttonPredict');
+  buttonPredict.mousePressed(classify);
+
+  // Clear all classes button
+  buttonClearAll = select('#clearAll');
+  buttonClearAll.mousePressed(clearAllClasses);
+
+  // Load saved classifier dataset
+  // buttonSetData = select('#load');
+  // buttonSetData.mousePressed(loadDataset);
+
+  // Get classifier dataset
+  buttonGetData = select('#save');
+  buttonGetData.mousePressed(saveDataset);
+}
+
+// Show the results
+function gotResults(err, result) {
+  // Display any error
+  if (err) {
+    console.error(err);
+  }
+
+  if (result.confidencesByLabel) {
+    const confideces = result.confidencesByLabel;
+    // result.label is the label that has the highest confidence
+    if (result.label) {
+      select('#result').html(result.label);
+      select('#confidence').html(`${confideces[result.label] * 100} %`);
+      wait(1000);
+
+    }
+
+    select('#confidenceRock').html(`${confideces['Rock'] ? confideces['Rock'] * 100 : 0} %`);
+    select('#confidencePaper').html(`${confideces['Paper'] ? confideces['Paper'] * 100 : 0} %`);
+    select('#confidenceScissor').html(`${confideces['Scissor'] ? confideces['Scissor'] * 100 : 0} %`);
+    computer_result = Math.floor(Math.random() * 4); // 1 is rock, 2 is paper, 3 is scissor
+    if (computer_result==1){
+      image(papergif, 450, 0);
+    }
+    if (computer_result==2){
+      image(sissorgif, 450, 0);
+    }
+    if (computer_result==3){
+      image(rockgif, 450, 0);
+    }
+
+    if (confideces['Rock']>0.6 && computer_result == 1){
+      document.body.style.backgroundColor = "blue";
+
+    }
+    if (confideces['Rock']>0.6 && computer_result == 2){
+      document.body.style.backgroundColor = "red";
+
+    }
+    if (confideces['Rock']>0.6 && computer_result == 3){
+      document.body.style.backgroundColor = "green";
+
+    }
+
+    if (confideces['Paper']>0.6 && computer_result == 1){
+      document.body.style.backgroundColor = "green";
+
+    }
+    if (confideces['Paper']>0.6 && computer_result == 2){
+      document.body.style.backgroundColor = "blue";
+
+    }
+    if (confideces['Paper']>0.6 && computer_result == 3){
+      document.body.style.backgroundColor = "red";
+
+    }
+
+    if (confideces['Scissor']>0.6 && computer_result == 1){
+      document.body.style.backgroundColor = "red";
+
+    }
+    if (confideces['Scissor']>0.6 && computer_result == 2){
+      document.body.style.backgroundColor = "green";
+
+    }
+    if (confideces['Scissor']>0.6 && computer_result == 3){
+      document.body.style.backgroundColor = "blue";
+
+    }
+  }
+
+  classify();
+}
+
+// Update the example count for each class
+function updateExampleCounts() {
+  const counts = knnClassifier.getClassExampleCountByLabel();
+
+  select('#exampleRock').html(counts['Rock'] || 0);
+  select('#examplePaper').html(counts['Paper'] || 0);
+  select('#exampleScissor').html(counts['Scissor'] || 0);
+}
+
+// Clear the examples in one class
+function clearClass(classLabel) {
+  knnClassifier.clearClass(classLabel);
+  updateExampleCounts();
+}
+
+// Clear all the examples in all classes
+function clearAllClasses() {
+  knnClassifier.clearAllClasses();
+  updateExampleCounts();
+}
+
+// Save dataset as myKNNDataset.json
+function saveDataset() {
+  knnClassifier.saveDataset('myKNNDataset');
+}
+
+// Load dataset to the classifier
+function loadDataset() {
+  knnClassifier.loadDataset('./myKNNDataset.json', updateExampleCounts);
+}
+
+function wait(ms)
+{
+var d = new Date();
+var d2 = null;
+do { d2 = new Date(); }
+while(d2-d < ms);
+}
